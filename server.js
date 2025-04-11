@@ -339,7 +339,7 @@ function broadcastGameState() {
 }
 
 // Démarrer le serveur
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Serveur démarré avec succès sur le port ${PORT}`);
     console.log(`- Interface web disponible à http://localhost:${PORT}`);
     console.log(`- WebSocket disponible à ws://localhost:${PORT}`);
