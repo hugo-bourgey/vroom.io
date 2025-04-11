@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,16 +13,16 @@
             margin: 0;
             padding: 20px;
         }
-        
+
         #game-container {
             max-width: 800px;
             margin: 0 auto;
             background-color: white;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        
+
         #race-track {
             background-color: #333;
             padding: 20px;
@@ -30,7 +31,7 @@
             position: relative;
             height: 300px;
         }
-        
+
         .car {
             width: 60px;
             height: 40px;
@@ -39,22 +40,20 @@
             transition: all 0.3s;
             border-radius: 5px;
         }
-        
+
         .finish-line {
             position: absolute;
             right: 20px;
             top: 0;
             width: 10px;
             height: 100%;
-            background: repeating-linear-gradient(
-                45deg,
-                black,
-                black 10px,
-                white 10px,
-                white 20px
-            );
+            background: repeating-linear-gradient(45deg,
+                    black,
+                    black 10px,
+                    white 10px,
+                    white 20px);
         }
-        
+
         button {
             padding: 15px 30px;
             font-size: 18px;
@@ -65,28 +64,28 @@
             cursor: pointer;
             margin: 10px;
         }
-        
+
         button:hover {
             background-color: #45a049;
         }
-        
+
         button:disabled {
             background-color: #cccccc;
             cursor: not-allowed;
         }
-        
+
         #players-list {
             margin: 20px 0;
             text-align: left;
             padding: 0 20px;
         }
-        
+
         #game-status {
             font-size: 18px;
             margin: 20px 0;
             font-weight: bold;
         }
-        
+
         .car-label {
             position: absolute;
             color: white;
@@ -95,54 +94,57 @@
             width: 100%;
             text-align: center;
         }
-        
+
         #connection-status {
             padding: 5px 10px;
             border-radius: 5px;
             display: inline-block;
             margin-top: 10px;
         }
-        
+
         .connected {
             background-color: #4CAF50;
             color: white;
         }
-        
+
         .disconnected {
             background-color: #f44336;
             color: white;
         }
-        
+
         .connecting {
             background-color: #ff9800;
             color: white;
         }
     </style>
 </head>
+
 <body>
     <div id="game-container">
         <h1>Course de Voitures</h1>
         <div id="connection-status" class="disconnected">Déconnecté</div>
-        
+
         <div id="welcome-screen">
             <h2>Entrez votre nom pour jouer</h2>
             <input type="text" id="player-name" placeholder="Votre nom">
             <button id="join-game">Rejoindre la course</button>
         </div>
-        
+
         <div id="game-screen" style="display: none;">
             <div id="game-status">En attente de joueurs...</div>
-            
+
             <div id="race-track">
                 <div class="finish-line"></div>
                 <!-- Les voitures seront ajoutées ici dynamiquement -->
             </div>
-            
+
             <button id="accelerate" disabled>Accélérer !</button>
-            
+
             <h3>Joueurs connectés:</h3>
             <ul id="players-list"></ul>
-            
+
+            <button id="start-race" style="display: none;">Démarrer la course</button>
+
             <button id="restart-game" style="display: none;">Nouvelle partie</button>
         </div>
     </div>
@@ -150,7 +152,7 @@
     <script>
         // Configuration
         const SERVER_URL = 'ws://' + window.location.hostname + ':3000';
-        
+
         // Variables du jeu
         let socket;
         let playerId;
@@ -161,7 +163,7 @@
             countdown: 0,
             winner: null
         };
-        
+
         // Éléments DOM
         const welcomeScreen = document.getElementById('welcome-screen');
         const gameScreen = document.getElementById('game-screen');
@@ -173,54 +175,63 @@
         const raceTrack = document.getElementById('race-track');
         const restartButton = document.getElementById('restart-game');
         const connectionStatus = document.getElementById('connection-status');
-        
+
         // Dimension de la piste
-        const raceTrackWidth = raceTrack.clientWidth - 80;
-        
+        // const raceTrackWidth = raceTrack.clientWidth - 80;
+
+        const startRaceButton = document.getElementById('start-race');
+        startRaceButton.addEventListener('click', startRace);
+
+
         // Gestionnaires d'événements
         joinGameButton.addEventListener('click', joinGame);
         accelerateButton.addEventListener('click', accelerate);
         restartButton.addEventListener('click', requestRestart);
-        
+
         // Initialiser la connexion WebSocket
         initWebSocket();
-        
+
+        function getRaceTrackWidth() {
+            return raceTrack.clientWidth - 80;
+        }
+
+
         function initWebSocket() {
             updateConnectionStatus('connecting');
-            
+
             // Créer une nouvelle connexion WebSocket
             socket = new WebSocket(SERVER_URL);
-            
+
             // Gestionnaire d'ouverture de connexion
-            socket.onopen = function() {
+            socket.onopen = function () {
                 console.log('Connexion WebSocket établie');
                 updateConnectionStatus('connected');
             };
-            
+
             // Gestionnaire de messages
-            socket.onmessage = function(event) {
+            socket.onmessage = function (event) {
                 handleServerMessage(event.data);
             };
-            
+
             // Gestionnaire d'erreur
-            socket.onerror = function(error) {
+            socket.onerror = function (error) {
                 console.error('Erreur WebSocket:', error);
                 updateConnectionStatus('disconnected');
             };
-            
+
             // Gestionnaire de fermeture
-            socket.onclose = function() {
+            socket.onclose = function () {
                 console.log('Connexion WebSocket fermée');
                 updateConnectionStatus('disconnected');
-                
+
                 // Tenter de se reconnecter après un délai
                 setTimeout(initWebSocket, 5000);
             };
         }
-        
+
         function updateConnectionStatus(status) {
             connectionStatus.className = status;
-            
+
             switch (status) {
                 case 'connected':
                     connectionStatus.textContent = 'Connecté';
@@ -233,36 +244,36 @@
                     break;
             }
         }
-        
+
         function joinGame() {
             playerName = playerNameInput.value.trim();
             if (!playerName) {
                 alert('Veuillez entrer un nom');
                 return;
             }
-            
+
             // Envoyer le nom du joueur au serveur
             sendToServer('join', { name: playerName });
-            
+
             welcomeScreen.style.display = 'none';
             gameScreen.style.display = 'block';
         }
-        
+
         function accelerate() {
             // Envoyer une demande d'accélération au serveur
             sendToServer('accelerate', {});
         }
-        
+
         function requestRestart() {
             // Envoyer une demande de redémarrage au serveur
             sendToServer('restart', {});
         }
-        
+
         function handleServerMessage(messageData) {
             try {
                 const message = JSON.parse(messageData);
                 const { type, payload } = message;
-                
+
                 switch (type) {
                     case 'joined':
                         handleJoined(payload);
@@ -283,47 +294,51 @@
                 console.error('Erreur dans le traitement du message:', error);
             }
         }
-        
+
         function handleJoined(data) {
             playerId = data.playerId;
             playerName = data.playerName;
             gameState = data.gameState;
-            
+
             console.log(`Rejoint en tant que ${playerName} (${playerId})`);
-            
+
             // Mettre à jour l'interface utilisateur
             updateGameStatusDisplay();
+
+            handleGameState(gameState);
         }
-        
+
         function handlePlayersList(playersList) {
             players = playersList;
-            
+
             // Mettre à jour l'affichage des joueurs
             updatePlayersDisplay();
             updateCarDisplay();
         }
-        
+
         function handlePlayerProgress(data) {
             const { id, progress } = data;
-            
+
             // Mettre à jour la progression du joueur
             if (players[id]) {
                 players[id].progress = progress;
-                
+
                 // Mettre à jour la position de la voiture
                 updateCarPosition(id, progress);
-                
+
                 // Mettre à jour l'affichage des joueurs
                 updatePlayersDisplay();
             }
         }
-        
+
         function handleGameState(state) {
             gameState = state;
-            
+
             // Mettre à jour l'interface utilisateur en fonction de l'état du jeu
             updateGameStatusDisplay();
-            
+
+            startRaceButton.style.display = (gameState.status === 'waiting') ? 'inline-block' : 'none';
+
             // Gérer les boutons en fonction de l'état
             switch (gameState.status) {
                 case 'waiting':
@@ -344,7 +359,7 @@
                     break;
             }
         }
-        
+
         function updateGameStatusDisplay() {
             switch (gameState.status) {
                 case 'waiting':
@@ -365,24 +380,24 @@
                     break;
             }
         }
-        
+
         function updatePlayersDisplay() {
             playersList.innerHTML = '';
-            
+
             Object.values(players).forEach(player => {
                 const li = document.createElement('li');
                 li.textContent = `${player.name} - Progression: ${Math.round(player.progress)}%`;
                 li.style.color = player.color;
-                
+
                 // Mettre en évidence le joueur actuel
                 if (player.id === playerId) {
                     li.style.fontWeight = 'bold';
                 }
-                
+
                 playersList.appendChild(li);
             });
         }
-        
+
         function updateCarDisplay() {
             // Supprimer toutes les voitures existantes
             document.querySelectorAll('.car').forEach(car => {
@@ -390,7 +405,7 @@
                     car.remove();
                 }
             });
-            
+
             // Créer une voiture pour chaque joueur
             let index = 0;
             Object.values(players).forEach(player => {
@@ -399,29 +414,30 @@
                 carElement.className = 'car';
                 carElement.style.backgroundColor = player.color;
                 carElement.style.top = (index * 50 + 30) + 'px';
-                
+
                 // Ajouter un label avec le nom du joueur
                 const carLabel = document.createElement('div');
                 carLabel.className = 'car-label';
                 carLabel.textContent = player.name;
                 carElement.appendChild(carLabel);
-                
+
                 raceTrack.appendChild(carElement);
-                
+
                 // Mettre à jour la position initiale
                 updateCarPosition(player.id, player.progress);
-                
+
                 index++;
             });
         }
-        
+
         function updateCarPosition(id, progress) {
             const car = document.getElementById('car-' + id);
             if (car) {
-                car.style.left = (10 + (progress / 100) * raceTrackWidth) + 'px';
+                // car.style.left = (10 + (progress / 100) * raceTrackWidth) + 'px';
+                car.style.left = (10 + (progress / 100) * getRaceTrackWidth()) + 'px';
             }
         }
-        
+
         function sendToServer(type, payload) {
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type, payload }));
@@ -429,6 +445,13 @@
                 console.warn('Impossible d\'envoyer le message, WebSocket n\'est pas connecté');
             }
         }
+
+        function startRace() {
+            sendToServer('startRace', {});
+            startRaceButton.style.display = 'none'; // cacher après clic
+        }
+
     </script>
 </body>
+
 </html>
